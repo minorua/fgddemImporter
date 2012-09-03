@@ -74,7 +74,7 @@
     <message>
         <location filename="fgddemImporter.py" line="37"/>
         <source>Import fgddem xml/zip files</source>
-        <translation>基盤地図情報(数値標高モデル)のファイルを変換，インポートする</translation>
+        <translation>基盤地図情報(数値標高モデル)のファイルをGeoTIFFに変換，インポートする</translation>
     </message>
 </context>
 </TS>
