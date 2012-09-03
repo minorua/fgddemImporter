@@ -11,6 +11,15 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ########################################################################
 
+from PyQt4.QtCore import *
+import os, locale
+
+file = "%s.qm" % os.path.join(os.path.dirname(__file__), locale.getdefaultlocale()[0])
+if os.path.exists(file):
+    translator = QTranslator(QCoreApplication.instance())
+    translator.load(file)
+    QCoreApplication.instance().installTranslator(translator)
+
 def name():
     return "fgddemImporter"
 

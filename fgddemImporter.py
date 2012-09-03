@@ -1,5 +1,5 @@
 ########################################################################
-# Raster Painter - A QGIS plugin
+# fgddemImporter - A QGIS plugin
 # Copyright (C) 2012 Akagri Minoru
 # email : akaginch@yahoo.co.jp
 #
@@ -10,7 +10,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ########################################################################
-# version beta 2012/06/09
+# version beta 2012/06/10
 # not support filepath with multibyte string
 
 from PyQt4.QtCore import *
@@ -22,18 +22,8 @@ import os
 # initialize Qt resources from file resouces.py
 import resources
 
-plugin_title = "fgddem Importer"
 plugin_classname = "fgddemImporter"
-
-def getPluginDir():
-    d = os.getenv('HOME') + '/.qgis/python/plugins/' + plugin_classname
-    if os.path.exists(d): return d
-    qgis_prefix = unicode(QgsApplication.prefixPath())
-    d = qgis_prefix + '/python/plugins/' + plugin_classname
-    if os.path.exists(d): return d
-    d = qgis_prefix + '/share/qgis/python/plugins/' + plugin_classname
-    if os.path.exists(d): return d
-    return None
+plugin_title = QApplication.translate(plugin_classname, "fgddem Importer", None, QApplication.UnicodeUTF8)
 
 class fgddemImporter:
     def __init__(self, iface):
@@ -43,8 +33,8 @@ class fgddemImporter:
     def initGui(self):
         # create action that will start plugin
         self.action = QAction(QIcon(":/plugins/fgddemImporter/icon.png"), plugin_title, self.iface.mainWindow())
-        self.action.setWhatsThis("fgddemImporter Plugin")
-        self.action.setStatusTip("Import fgddem xml/zip files")
+        self.action.setWhatsThis(self.tr("fgddemImporter Plugin"))
+        self.action.setStatusTip(self.tr("Import fgddem xml/zip files"))
         QObject.connect(self.action, SIGNAL("triggered()"), self.run)
 
         # add toolbar button and menu item
@@ -61,6 +51,9 @@ class fgddemImporter:
         d = fgddemDialog(self.iface)
         d.exec_()
 
+    def tr(self, text):
+        return QApplication.translate(plugin_classname, text, None, QApplication.UnicodeUTF8)
+
 # Dialog
 # REFFERED TO: fTools Plug-in
 
@@ -73,100 +66,99 @@ class fgddemDialog(QDialog):
     def __init__(self, iface):
         QDialog.__init__(self)
         self.iface = iface
-        self.caption = self.tr(plugin_title)
+        self.caption = plugin_title
         self.setupUi()
 
         s = QSettings()
 
     def setupUi(self):
         Dialog = self
-        self.setObjectName(_fromUtf8("Dialog"))
-        self.setWindowModality(Qt.WindowModal)
+        self.setObjectName("Dialog")
         self.resize(377, 100)
         self.setSizeGripEnabled(True)
 
         self.gridLayout = QGridLayout(Dialog)
-        self.gridLayout.setObjectName(_fromUtf8("gridLayout"))
+        self.gridLayout.setObjectName("gridLayout")
 
 
         self.label1 = QLabel(Dialog)
-        self.label1.setObjectName(_fromUtf8("label1"))
+        self.label1.setObjectName("label1")
         self.gridLayout.addWidget(self.label1, 0, 0, 1, 1)
 
         self.hboxlayout1 = QHBoxLayout()
-        self.hboxlayout1.setObjectName(_fromUtf8("hboxlayout1"))
+        self.hboxlayout1.setObjectName("hboxlayout1")
 
         self.toolFile1 = QToolButton(Dialog)
-        self.toolFile1.setObjectName(_fromUtf8("toolFile1"))
+        self.toolFile1.setObjectName("toolFile1")
         self.hboxlayout1.addWidget(self.toolFile1)
 
         self.toolClear = QToolButton(Dialog)
-        self.toolClear.setObjectName(_fromUtf8("toolClear"))
+        self.toolClear.setObjectName("toolClear")
         self.hboxlayout1.addWidget(self.toolClear)
 
         self.gridLayout.addLayout(self.hboxlayout1, 0, 1, 1, 1, Qt.Alignment(Qt.AlignRight))
 
         self.inFiles = QListWidget(Dialog)
-        self.inFiles.setObjectName(_fromUtf8("inFiles"))
+        self.inFiles.setObjectName("inFiles")
         self.gridLayout.addWidget(self.inFiles, 1, 0, 1, 2)
 
         self.label2 = QLabel(Dialog)
-        self.label2.setObjectName(_fromUtf8("label2"))
+        self.label2.setObjectName("label2")
         self.gridLayout.addWidget(self.label2, 2, 0, 1, 1)
 
         self.label3 = QLabel(Dialog)
-        self.label3.setObjectName(_fromUtf8("label3"))
+        self.label3.setObjectName("label3")
         self.gridLayout.addWidget(self.label3, 2, 1, 1, 1, Qt.Alignment(Qt.AlignRight))
 
 
         self.hboxlayout2 = QHBoxLayout()
-        self.hboxlayout2.setObjectName(_fromUtf8("hboxlayout2"))
+        self.hboxlayout2.setObjectName("hboxlayout2")
 
         self.outDir = QLineEdit(Dialog)
 #        self.outDir.setReadOnly(True)
-        self.outDir.setObjectName(_fromUtf8("outDir"))
+        self.outDir.setObjectName("outDir")
         self.hboxlayout2.addWidget(self.outDir)
 
         self.toolDir1 = QToolButton(Dialog)
-        self.toolDir1.setObjectName(_fromUtf8("toolDir1"))
+        self.toolDir1.setObjectName("toolDir1")
         self.hboxlayout2.addWidget(self.toolDir1)
 
         self.gridLayout.addLayout(self.hboxlayout2, 3, 0, 1, 2)
 
         self.check1 = QCheckBox(Dialog)
-        self.check1.setObjectName(_fromUtf8("check1"))
+        self.check1.setObjectName("check1")
         self.gridLayout.addWidget(self.check1, 4, 0, 1, 2)
 
         self.check2 = QCheckBox(Dialog)
-        self.check2.setObjectName(_fromUtf8("check2"))
+        self.check2.setObjectName("check2")
         self.gridLayout.addWidget(self.check2, 5, 0, 1, 2)
 
         self.buttonBox1 = QDialogButtonBox(self)
         self.buttonBox1.setOrientation(Qt.Horizontal)
         self.buttonBox1.setStandardButtons(QDialogButtonBox.Ok|QDialogButtonBox.Close)
-        self.buttonBox1.setObjectName(_fromUtf8("buttonBox1"))
+        self.buttonBox1.setObjectName("buttonBox1")
         self.gridLayout.addWidget(self.buttonBox1, 6, 0, 1, 2)
 
-        self.setWindowTitle(QApplication.translate(plugin_classname, plugin_title, None, QApplication.UnicodeUTF8))
-        self.label1.setText(QApplication.translate(plugin_classname, "Files to import", None, QApplication.UnicodeUTF8))
-        self.toolFile1.setText(QApplication.translate(plugin_classname, "Add files", None, QApplication.UnicodeUTF8))
-        self.toolClear.setText(QApplication.translate(plugin_classname, "Clear", None, QApplication.UnicodeUTF8))
-        self.label2.setText(QApplication.translate(plugin_classname, "Output directory", None, QApplication.UnicodeUTF8))
-        self.label3.setText("0 files")
-        self.toolDir1.setText('...')
-        self.check1.setText(QApplication.translate(plugin_classname, "Replace nodata by zero", None, QApplication.UnicodeUTF8))
-        self.check2.setText(QApplication.translate(plugin_classname, "Converting only (run in background)", None, QApplication.UnicodeUTF8))
+        self.setWindowTitle(self.tr(plugin_title))
+        self.label1.setText(self.tr("Files to import"))
+        self.toolFile1.setText(self.tr("Add files"))
+        self.toolClear.setText(self.tr("Clear"))
+        self.label2.setText(self.tr("Output directory"))
+        self.label3.setText("0" + self.tr(" files"))
+        self.toolDir1.setText("...")
+        self.check1.setText(self.tr("Replace nodata by zero"))
+        self.check2.setText(self.tr("Converting only (run in background)"))
 
         self.importButton = self.buttonBox1.button(QDialogButtonBox.Ok)
         self.importButton.setEnabled(False)
-        self.importButton.setText(QApplication.translate(plugin_classname, "Import", None, QApplication.UnicodeUTF8))
+        self.importButton.setText(self.tr("Import"))
 
         QObject.connect(self.toolFile1, SIGNAL("clicked()"), self.filedialog)
         QObject.connect(self.toolClear, SIGNAL("clicked()"), self.clear_files)
         QObject.connect(self.toolDir1, SIGNAL("clicked()"), self.directorydialog)
         QObject.connect(self.check2, SIGNAL("stateChanged(int)"), self.check2_changed)
-        QObject.connect(self.buttonBox1, SIGNAL(_fromUtf8("accepted()")), self.import_fgddem)
-        QObject.connect(self.buttonBox1, SIGNAL(_fromUtf8("rejected()")), self.close)
+        QObject.connect(self.buttonBox1, SIGNAL("accepted()"), self.import_fgddem)
+        QObject.connect(self.buttonBox1, SIGNAL("rejected()"), self.close)
 
         #TODO acceptDrops
 
@@ -174,17 +166,17 @@ class fgddemDialog(QDialog):
 
     def check2_changed(self, state):
         if state:
-            self.importButton.setText(QApplication.translate(plugin_classname, "Convert", None, QApplication.UnicodeUTF8))
+            self.importButton.setText(self.tr("Convert"))
         else:
-            self.importButton.setText(QApplication.translate(plugin_classname, "Import", None, QApplication.UnicodeUTF8))
+            self.importButton.setText(self.tr("Import"))
 
     def directorydialog(self):
-        file = unicode(QFileDialog.getExistingDirectory(self, "Select output directory"))
+        file = unicode(QFileDialog.getExistingDirectory(self, self.tr("Select output directory")))
         if file != "":
             self.outDir.setText(file)
 
     def filedialog(self):
-        names = map(str, QFileDialog.getOpenFileNames(self, "Select files to import", QDir.homePath(), _fromUtf8("JPGIS_GML files (*.zip *.xml)")))
+        names = map(str, QFileDialog.getOpenFileNames(self, self.tr("Select files to import"), QDir.homePath(), "JPGIS_GML files (*.zip *.xml)"))
         
         if len(names) > 0:
             existing = []
@@ -195,7 +187,7 @@ class fgddemDialog(QDialog):
                 if not name in existing:
                     self.inFiles.addItem(name)
 
-            self.label3.setText("%d files" % self.inFiles.count())
+            self.label3.setText(str(self.inFiles.count()) + self.tr(" files"))
             self.importButton.setEnabled(True)
 
             if self.outDir.text() == "":
@@ -203,28 +195,27 @@ class fgddemDialog(QDialog):
 
     def clear_files(self):
         self.inFiles.clear()
-        self.label3.setText("0 files")
+        self.label3.setText("0" + self.tr(" files"))
         self.importButton.setEnabled(False)
 
     def import_fgddem(self):
-        pdir = getPluginDir()
-        if pdir is None:
-            QMessageBox.warning(self, self.caption, QApplication.translate(plugin_classname, 'Error: Cannot find plugin directory.', None, QApplication.UnicodeUTF8))
-            return
+        pdir = os.path.dirname(__file__)
         out_dir = unicode(self.outDir.text())
-        if out_dir.find(' ') != -1:
-            QMessageBox.warning(self, self.caption, QApplication.translate(plugin_classname, 'Error: Output directory cannot include any space characters.', None, QApplication.UnicodeUTF8))
+        if out_dir.find(" ") != -1:
+            QMessageBox.warning(self, self.caption, self.tr("Error: Output directory cannot include any space characters."))
             return
-        options = '-out_dir "%s" ' % out_dir
+        options = "-out_dir %s " % out_dir
 
         if self.check1.isChecked():
-            options += '-replace_nodata_by_zero '
+            options += "-replace_nodata_by_zero "
 
         names = []
         for i in range(self.inFiles.count()):
             names.append(unicode(self.inFiles.item(i).text()))
 
-        cmd = 'python "%s/fgddem.py" %s' % (pdir, options + ' '.join(map(quote_string, names)))
+        cmd = 'python "%s/fgddem.py" %s' % (pdir, options + " ".join(map(quote_string, names)))
+
+        QMessageBox.warning(self, self.caption, cmd)
 
         self.importButton.setEnabled(False)
         if self.check2.isChecked():
@@ -232,7 +223,7 @@ class fgddemDialog(QDialog):
         else:
             os.system(cmd)
             for i in range(len(names)):
-                names[i] = os.path.join(out_dir, os.path.splitext(os.path.split(names[i])[1])[0] + '.tif')
+                names[i] = os.path.join(out_dir, os.path.splitext(os.path.split(names[i])[1])[0] + ".tif")
             self.open_files(names)
 
     def open_files(self, names):
