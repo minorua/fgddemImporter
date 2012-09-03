@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # fgddem.py
-# Version: Beta (2012/4/18)
 # Copyright (c) 2012, Akagi Minoru.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -16,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__version__ = 'beta'
+script_version = '0.1'
 
 import sys,os
 import glob
@@ -36,7 +35,11 @@ try:
 except:
     progress = gdal.TermProgress
 
-# Convert JPGIS(GML) XML file to GeoTIFF file.
+verbose = 0
+quiet = 0
+debug_mode = 0
+
+# Convert Kiban JPGIS(GML) XML mesh file to GeoTIFF file.
 def convert_jpgis_gml(src_file,dest_file,driver,create_options = [],replace_nodata_by_zero = 0):
 
     if replace_nodata_by_zero:
@@ -110,21 +113,21 @@ def convert_jpgis_gml(src_file,dest_file,driver,create_options = [],replace_noda
     dst_ds.SetProjection('GEOGCS["JGD2000",DATUM["Japanese_Geodetic_Datum_2000",SPHEROID["GRS 1980",6378137,298.257222101,AUTHORITY["EPSG","7019"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY["EPSG","6612"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4612"]]')
 
     rband = dst_ds.GetRasterBand(1)
-    i = -(startX + xsize * startY)
-    nxarray = numpy.zeros((1,xsize),numpy.float32)
-
-    for y in range(ysize):
-        for x in range(xsize):
-            if 0 <= i and i < numLines_tupleList:
+    narray = numpy.empty((ysize, xsize), numpy.float32)
+    narray.fill(nodata_value)
+    i = 0; sx = startX
+    for y in range(startY, ysize):
+        for x in range(sx, xsize):
+            if i < numLines_tupleList:
                 vals = doc[i+l1].split(',')
                 if len(vals) == 2 and vals[1].find('-99') == -1:
-                    nxarray[0][x] = float(vals[1])
-                else:
-                    nxarray[0][x] = nodata_value
+                    narray[y][x] = float(vals[1])
+                i += 1
             else:
-                nxarray[0][x] = nodata_value
-            i += 1
-        rband.WriteArray(nxarray,0,y)
+                break
+        if i == numLines_tupleList: break
+        sx = 0
+    rband.WriteArray(narray,0,0)
 
     if replace_nodata_by_zero == 0:
         rband.SetNoDataValue(nodata_value)
@@ -164,11 +167,7 @@ def Usage():
     return 0
 
 def main(argv=None):
-
     global verbose, quiet, debug_mode
-    verbose = 0
-    quiet = 0
-    debug_mode = 0
     format = 'GTiff'
     filenames = []
     out_dir = ''
@@ -214,7 +213,7 @@ def main(argv=None):
             return Usage()
 
         elif arg == '-version':
-            print 'fgddem.py Version %s' % __version__
+            print 'fgddem.py Version %s' % script_version
             return 0
 
         elif arg[:1] == '-':
