@@ -38,8 +38,9 @@ except:
 
 # CHANGED 2012/06/06
 verbose = 0
-quiet = 1
+quiet = 0
 debug_mode = 0
+noprogress = 0
 ###
 
 # Convert JPGIS(GML) XML file to GeoTIFF file.
@@ -171,10 +172,7 @@ def Usage():
 
 def main(argv=None):
 
-    global verbose, quiet, debug_mode
-    verbose = 0
-    quiet = 0
-    debug_mode = 0
+    global verbose, quiet, debug_mode, noprogress
     format = 'GTiff'
     filenames = []
     out_dir = ''
@@ -213,6 +211,9 @@ def main(argv=None):
         elif arg == '-q':
             quiet = 1
 
+        elif arg == '-noprogress':
+            noprogress = 1
+
         elif arg == '-debug':
             debug_mode = 1
 
@@ -248,7 +249,7 @@ def main(argv=None):
         print 'No input files selected.'
         return Usage()
 
-    if quiet:
+    if quiet or noprogress:
         gdal_merge_options += ' -q'
 
     if verbose == 0:
@@ -292,7 +293,7 @@ def main(argv=None):
             if quiet == 0:
                 print 'translating %s' % dst_root
 
-            if quiet == 0 and verbose == 0:
+            if quiet == 0 and verbose == 0 and noprogress == 0:
                 progress(0.0)
 
             fi_processed_in = 0
@@ -308,7 +309,7 @@ def main(argv=None):
                     f.write(file_in+'.tif\n')
 
                 fi_processed_in += 1
-                if quiet == 0 and verbose == 0:
+                if quiet == 0 and verbose == 0 and noprogress == 0:
                     progress(fi_processed_in / float(len(file_list)))
 
             f.close()
@@ -326,10 +327,10 @@ def main(argv=None):
                 print 'executing %s' % merge_command
             os.system(merge_command)
 
-            if quiet == 0:
-                print 'removing temporary files'
-                print ''
             shutil.rmtree(dst_root)
+            if quiet == 0:
+                print 'temporary files have been removed'
+                print ''
 
         elif ext == '.xml' and src_file.find('meta') == -1:
             convert_jpgis_gml(src_file,dst_file,driver,[],replace_nodata_by_zero)
