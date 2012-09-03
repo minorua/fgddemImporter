@@ -10,7 +10,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ########################################################################
-# version beta 2012/06/10
+# version beta 2012/06/12
 # not support filepath with multibyte string
 
 from PyQt4.QtCore import *
@@ -23,7 +23,6 @@ import os
 import resources
 
 plugin_classname = "fgddemImporter"
-plugin_title = QApplication.translate(plugin_classname, "fgddem Importer", None, QApplication.UnicodeUTF8)
 
 class fgddemImporter:
     def __init__(self, iface):
@@ -32,18 +31,18 @@ class fgddemImporter:
 
     def initGui(self):
         # create action that will start plugin
-        self.action = QAction(QIcon(":/plugins/fgddemImporter/icon.png"), plugin_title, self.iface.mainWindow())
+        self.action = QAction(QIcon(":/plugins/fgddemImporter/icon.png"), self.tr("fgddem Importer"), self.iface.mainWindow())
         self.action.setWhatsThis(self.tr("fgddemImporter Plugin"))
         self.action.setStatusTip(self.tr("Import fgddem xml/zip files"))
         QObject.connect(self.action, SIGNAL("triggered()"), self.run)
 
         # add toolbar button and menu item
         self.iface.addToolBarIcon(self.action)
-        self.iface.addPluginToMenu(plugin_title, self.action)
+        self.iface.addPluginToMenu(self.tr("fgddem Importer"), self.action)
 
     def unload(self):
         # remove the plugin menu item and icon
-        self.iface.removePluginMenu(plugin_title, self.action)
+        self.iface.removePluginMenu(self.tr("fgddem Importer"), self.action)
         self.iface.removeToolBarIcon(self.action)
 
     def run(self):
@@ -66,7 +65,7 @@ class fgddemDialog(QDialog):
     def __init__(self, iface):
         QDialog.__init__(self)
         self.iface = iface
-        self.caption = plugin_title
+        self.caption = self.tr("fgddem Importer")
         self.setupUi()
 
         s = QSettings()
@@ -100,6 +99,7 @@ class fgddemDialog(QDialog):
 
         self.inFiles = QListWidget(Dialog)
         self.inFiles.setObjectName("inFiles")
+        self.inFiles.setAcceptDrops(True)
         self.gridLayout.addWidget(self.inFiles, 1, 0, 1, 2)
 
         self.label2 = QLabel(Dialog)
@@ -139,7 +139,7 @@ class fgddemDialog(QDialog):
         self.buttonBox1.setObjectName("buttonBox1")
         self.gridLayout.addWidget(self.buttonBox1, 6, 0, 1, 2)
 
-        self.setWindowTitle(self.tr(plugin_title))
+        self.setWindowTitle(self.tr("fgddem Importer"))
         self.label1.setText(self.tr("Files to import"))
         self.toolFile1.setText(self.tr("Add files"))
         self.toolClear.setText(self.tr("Clear"))
@@ -160,9 +160,34 @@ class fgddemDialog(QDialog):
         QObject.connect(self.buttonBox1, SIGNAL("accepted()"), self.import_fgddem)
         QObject.connect(self.buttonBox1, SIGNAL("rejected()"), self.close)
 
-        #TODO acceptDrops
-
         QMetaObject.connectSlotsByName(Dialog)
+
+    def dragEnterEvent(self, e):
+        if e.mimeData().hasUrls():
+            e.accept()
+        else:
+            e.ignore()
+
+    def dropEvent(self, e):
+        names = []
+        for u in e.mimeData().urls():
+            names.append(unicode(u.toLocalFile()))
+        self.add_files(names)
+
+    def add_files(self, names):
+        existing = []
+        for i in range(self.inFiles.count()):
+            existing.append(unicode(self.inFiles.item(i).text()))
+
+        allow_exts = [".zip", ".xml"]
+        for name in names:
+            ext = os.path.splitext(name)[1].lower()
+            if not name in existing and ext in allow_exts:
+                self.inFiles.addItem(name)
+        self.label3.setText(str(self.inFiles.count()) + self.tr(" files"))
+        self.importButton.setEnabled(True)
+        if self.outDir.text() == "":
+            self.outDir.setText(os.path.split(names[0])[0])
 
     def check2_changed(self, state):
         if state:
@@ -176,22 +201,9 @@ class fgddemDialog(QDialog):
             self.outDir.setText(file)
 
     def filedialog(self):
-        names = map(str, QFileDialog.getOpenFileNames(self, self.tr("Select files to import"), QDir.homePath(), "JPGIS_GML files (*.zip *.xml)"))
-        
+        names = map(unicode, QFileDialog.getOpenFileNames(self, self.tr("Select files to import"), QDir.homePath(), "JPGIS_GML files (*.zip *.xml)"))
         if len(names) > 0:
-            existing = []
-            for i in range(self.inFiles.count()):
-                existing.append(unicode(self.inFiles.item(i).text()))
-
-            for name in names:
-                if not name in existing:
-                    self.inFiles.addItem(name)
-
-            self.label3.setText(str(self.inFiles.count()) + self.tr(" files"))
-            self.importButton.setEnabled(True)
-
-            if self.outDir.text() == "":
-                self.outDir.setText(os.path.split(names[0])[0])
+            self.add_files(names)
 
     def clear_files(self):
         self.inFiles.clear()
@@ -215,7 +227,9 @@ class fgddemDialog(QDialog):
 
         cmd = 'python "%s/fgddem.py" %s' % (pdir, options + " ".join(map(quote_string, names)))
 
-        QMessageBox.warning(self, self.caption, cmd)
+        msg = self.tr("Are you sure you want to start converting ") + str(len(names)) + self.tr(" files to GeoTIFF file?")
+        if QMessageBox.question(self, self.caption, msg, QMessageBox.Ok | QMessageBox.Cancel) != QMessageBox.Ok:
+            return
 
         self.importButton.setEnabled(False)
         if self.check2.isChecked():
@@ -227,9 +241,31 @@ class fgddemDialog(QDialog):
             self.open_files(names)
 
     def open_files(self, names):
+        colormap = [
+            [-50, 0, 0, 205],
+            [0, 0, 191, 191],
+            [0.1, 57, 151, 105],
+            [100, 117, 194, 93],
+            [200, 230, 230, 128],
+            [500, 202, 158, 75],
+            [1000, 214, 187, 98],
+            [2000, 185, 154, 100],
+            [3000, 220, 220, 220],
+            [3800, 255, 255, 255]]
+
+        rampitems = []
+        for item in colormap:
+            rampitems.append(QgsColorRampShader.ColorRampItem(item[0], QColor(item[1], item[2], item[3])))
+
         for name in names:
             filetitle = os.path.splitext(os.path.split(name)[1])[0]
             layer = QgsRasterLayer(name, filetitle)
+            layer.setColorShadingAlgorithm(QgsRasterLayer.ColorRampShader)
+            fcn = layer.rasterShader().rasterShaderFunction()
+            fcn.setColorRampType(QgsColorRampShader.INTERPOLATED)
+            fcn.setColorRampItemList(rampitems)
+            layer.setDrawingStyle(QgsRasterLayer.SingleBandPseudoColor)
+
             QgsMapLayerRegistry.instance().addMapLayer(layer)
 
     def close(self):

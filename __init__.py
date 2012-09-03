@@ -30,7 +30,7 @@ def category():
   return "Raster"
 
 def version():
-    return "Version Beta 2012/06/09"
+    return "Version Beta 2012/06/12"
 
 def icon():
     return "icon.png"
