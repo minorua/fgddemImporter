@@ -1,0 +1,8 @@
+; the next section is mandatory
+[general]
+name=fgddemImporter
+qgisMinimumVersion=1.8
+description=Import fgddem xml/zip file.
+category=Raster
+version=version 0.1
+; end of mandatory metadata
