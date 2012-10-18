@@ -10,7 +10,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ########################################################################
-# version beta 2012/06/12
+# version beta 2012/10/18
 # not support filepath with multibyte string
 
 from PyQt4.QtCore import *
@@ -52,14 +52,6 @@ class fgddemImporter:
 
     def tr(self, text):
         return QApplication.translate(plugin_classname, text, None, QApplication.UnicodeUTF8)
-
-# Dialog
-# REFFERED TO: fTools Plug-in
-
-try:
-    _fromUtf8 = QString.fromUtf8
-except AttributeError:
-    _fromUtf8 = lambda s: s
 
 class fgddemDialog(QDialog):
     def __init__(self, iface):
@@ -207,7 +199,7 @@ class fgddemDialog(QDialog):
 
     def clear_files(self):
         self.inFiles.clear()
-        self.label3.setText("0" + self.tr(" files"))
+        self.label3.setText(self.tr("%d files") % 0)
         self.importButton.setEnabled(False)
 
     def import_fgddem(self):
@@ -227,7 +219,7 @@ class fgddemDialog(QDialog):
 
         cmd = 'python "%s/fgddem.py" %s' % (pdir, options + " ".join(map(quote_string, names)))
 
-        msg = self.tr("Are you sure you want to start converting ") + str(len(names)) + self.tr(" files to GeoTIFF file?")
+        msg = self.tr("Are you sure you want to start converting %d files to GeoTIFF file?") % len(names)
         if QMessageBox.question(self, self.caption, msg, QMessageBox.Ok | QMessageBox.Cancel) != QMessageBox.Ok:
             return
 
@@ -260,11 +252,17 @@ class fgddemDialog(QDialog):
         for name in names:
             filetitle = os.path.splitext(os.path.split(name)[1])[0]
             layer = QgsRasterLayer(name, filetitle)
-            layer.setColorShadingAlgorithm(QgsRasterLayer.ColorRampShader)
-            fcn = layer.rasterShader().rasterShaderFunction()
-            fcn.setColorRampType(QgsColorRampShader.INTERPOLATED)
-            fcn.setColorRampItemList(rampitems)
-            layer.setDrawingStyle(QgsRasterLayer.SingleBandPseudoColor)
+
+            if hasattr(layer, "rasterShader"):
+                # ver. < 1.9
+                layer.setColorShadingAlgorithm(QgsRasterLayer.ColorRampShader)
+                fcn = layer.rasterShader().rasterShaderFunction()
+                fcn.setColorRampType(QgsColorRampShader.INTERPOLATED)
+                fcn.setColorRampItemList(rampitems)
+                layer.setDrawingStyle(QgsRasterLayer.SingleBandPseudoColor)
+            else:
+                # ver. >= 1.9 in developing
+                pass
 
             QgsMapLayerRegistry.instance().addMapLayer(layer)
 

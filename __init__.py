@@ -30,7 +30,7 @@ def category():
   return "Raster"
 
 def version():
-    return "Version Beta 2012/06/12"
+    return "Version Beta 2012/10/18"
 
 def icon():
     return "icon.png"
@@ -39,7 +39,7 @@ def qgisMinimumVersion():
     return "1.0"
 
 def authorName():
-    return "Akagi Minoru"
+    return "Minoru Akagi"
 
 def classFactory(iface):
     import fgddemImporter
