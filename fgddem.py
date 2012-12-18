@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # fgddem.py
-# Copyright (c) 2012, Akagi Minoru.
+# Copyright (c) 2012, Minoru Akagi
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,10 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-script_version = '0.1'
+script_version = '0.2'
 
 import sys,os
 import glob
+import re
 import zipfile
 import shutil
 import codecs
@@ -39,7 +40,8 @@ verbose = 0
 quiet = 0
 debug_mode = 0
 
-# Convert Kiban JPGIS(GML) XML mesh file to GeoTIFF file.
+# Convert DEM of Fundamental Geospatial Data into GeoTIFF
+# This function supports only JPGIS (GML). JPGIS is not supported.
 def convert_jpgis_gml(src_file,dest_file,driver,create_options = [],replace_nodata_by_zero = 0):
 
     if replace_nodata_by_zero:
@@ -96,20 +98,16 @@ def convert_jpgis_gml(src_file,dest_file,driver,create_options = [],replace_noda
 
     psize_x = (lrx - ulx) / xsize
     psize_y = (lry - uly) / ysize
-
     geotransform = [ulx, psize_x, 0, uly, 0, psize_y]
 
-    band_type = gdal.GDT_Float32
-    bands = 1
-
-    dst_ds = driver.Create(dest_file, xsize, ysize, bands, band_type, create_options)
+    dst_ds = driver.Create(dest_file, xsize, ysize, 1, gdal.GDT_Float32, create_options)
     if dst_ds is None:
         print 'Creation failed.'
         sys.exit(1)
 
     dst_ds.SetGeoTransform(geotransform)
 
-    # The following Well Known Text has been cited from http://spatialreference.org/ref/epsg/4612/ogcwkt/
+    # The following Well Known Text of CRS has been quoted from http://spatialreference.org/ref/epsg/4612/ogcwkt/
     dst_ds.SetProjection('GEOGCS["JGD2000",DATUM["Japanese_Geodetic_Datum_2000",SPHEROID["GRS 1980",6378137,298.257222101,AUTHORITY["EPSG","7019"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY["EPSG","6612"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4612"]]')
 
     rband = dst_ds.GetRasterBand(1)
@@ -143,8 +141,7 @@ def convert_jpgis_gml(src_file,dest_file,driver,create_options = [],replace_noda
         print 'bounds : %f, %f - %f, %f' % (lry,ulx,uly,lrx)
         print 'cell size : %f, %f' % (psize_x,psize_y)
         print 'size : %d, %d' % (xsize,ysize)
-        print 'start point : %d, %d' % (startX,startY)
-        print ''
+        print 'start point : %d, %d\n' % (startX,startY)
 
 def unzip(src_file, dest=None):
     if os.path.isfile(src_file):
@@ -159,8 +156,7 @@ def unzip(src_file, dest=None):
 
 def Usage():
     print '=== Usage ==='
-    print 'python fgddem.py [-replace_nodata_by_zero][-out_dir output_directory][-q] [-v] src_files*'
-    print ''
+    print 'python fgddem.py [-replace_nodata_by_zero][-out_dir output_directory][-q] [-v] src_files*\n'
     print 'src_files: The source file name(s). JPGIS(GML) DEM zip/xml files.'
     print 'You can use -version option to display the version of this script.'
 
@@ -173,6 +169,7 @@ def main(argv=None):
     out_dir = ''
     replace_nodata_by_zero = 0
 
+    re_non_ascii = re.compile(r'[^\x20-\x7E]')
     gdal_merge_options = ''
     gdalwarp_options = ''
     gdal_merge_ext = ''
@@ -181,57 +178,41 @@ def main(argv=None):
 
     gdal_version = int(gdal.VersionInfo())
     gdal.AllRegister()
+    gdal.SetConfigOption("GDAL_FILENAME_IS_UTF8", "NO")
+    os.putenv("GDAL_FILENAME_IS_UTF8", "NO")    # for merging process
 
     if argv is None:
         argv = sys.argv
-    argv = gdal.GeneralCmdLineProcessor(argv)
-    if argv is None:
-        return 0
-
     # Parse command line arguments.
     i = 1
     while i < len(argv):
         arg = argv[i]
-
         if arg == '-replace_nodata_by_zero':
             replace_nodata_by_zero = 1
-
         elif arg == '-out_dir':
             i += 1
             out_dir = argv[i]
-
         elif arg == '-v':
             verbose = 1
-
         elif arg == '-q':
             quiet = 1
-
         elif arg == '-debug':
             debug_mode = 1
-
         elif arg == '-help' or arg == '--help':
             return Usage()
-
         elif arg == '-version':
             print 'fgddem.py Version %s' % script_version
             return 0
-
         elif arg[:1] == '-':
             print 'Unrecognised command option: %s' % arg
             return Usage()
-
         else:
             # Expand any possible wildcards
             f = glob.glob(arg)
             if len(f) == 0:
                 print 'File not found: "%s"' % arg
-
             filenames += f
-
         i = i + 1
-
-    if verbose or debug_mode:
-        sys.stdout = codecs.getwriter('shift_jis')(sys.stdout)      # Error occurs in Python >= 3.0
 
     if debug_mode:
         print 'args: %s' % ' '.join(argv)
@@ -264,7 +245,7 @@ def main(argv=None):
     fi_processed = 0
     for src_file in filenames:
         if quiet == 0 and len(filenames) > 1:
-            print 'Processing files ( %d / %d )' % (fi_processed+1, len(filenames))
+            print '(%d/%d): Processing %s' % (fi_processed+1, len(filenames), src_file)
 
         if out_dir == '':
             src_root, ext = os.path.splitext(src_file)
@@ -275,7 +256,6 @@ def main(argv=None):
             dst_root = os.path.join(out_dir,filetitle)
 
         dst_file = dst_root + '.tif'
-
         ext = ext.lower()
         if ext == '.zip':
             if quiet == 0:
@@ -303,15 +283,14 @@ def main(argv=None):
                 fi_processed_in += 1
                 if quiet == 0 and verbose == 0:
                     progress(fi_processed_in / float(len(file_list)))
-
             f.close()
 
-            if gdal_version >= 1900:
-                merge_command = 'gdal_merge' + gdal_merge_ext + gdal_merge_options + ' -o ' + dst_file + ' --optfile ' + filelist_file
+            if gdal_version >= 1900 and re_non_ascii.search(dst_file) == None:
+                merge_command = 'gdal_merge%s%s -o %s --optfile %s' % (gdal_merge_ext, gdal_merge_options, dst_file, filelist_file)
                 # TODO: testing in Linux
                 # Wildcards cannot be used for arguments now. See http://trac.osgeo.org/gdal/ticket/4542 (2012/04/08)
             else:
-                merge_command = 'gdalwarp' + gdalwarp_options + ' ' + os.path.join(dst_root,'*.tif') + ' ' + dst_file
+                merge_command = 'gdalwarp%s %s %s' % (gdalwarp_options, os.path.join(dst_root,'*.tif'), dst_file)
 
             if quiet == 0:
                 print 'merging files'
@@ -320,12 +299,14 @@ def main(argv=None):
             os.system(merge_command)
 
             if quiet == 0:
-                print 'removing temporary files'
-                print ''
+                print 'removing temporary files\n'
             shutil.rmtree(dst_root)
 
         elif ext == '.xml' and src_file.find('meta') == -1:
             convert_jpgis_gml(src_file,dst_file,driver,[],replace_nodata_by_zero)
+
+        else:
+            print 'ERROR: Not supported file. Conversion passed.' #TODO: is stderr better?
 
         fi_processed += 1
 
