@@ -4,5 +4,5 @@ name=fgddemImporter
 qgisMinimumVersion=1.0
 description=Import fgddem xml/zip files.
 category=Raster
-version=version beta (2012/10/18)
+version=version 0.0.1
 ; end of mandatory metadata

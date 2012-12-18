@@ -14,12 +14,6 @@
 from PyQt4.QtCore import *
 import os, locale
 
-file = "%s.qm" % os.path.join(os.path.dirname(__file__), locale.getdefaultlocale()[0])
-if os.path.exists(file):
-    translator = QTranslator(QCoreApplication.instance())
-    translator.load(file)
-    QCoreApplication.instance().installTranslator(translator)
-
 def name():
     return "fgddemImporter"
 
@@ -30,7 +24,7 @@ def category():
   return "Raster"
 
 def version():
-    return "Version Beta 2012/10/18"
+    return "Version 0.0.1"
 
 def icon():
     return "icon.png"

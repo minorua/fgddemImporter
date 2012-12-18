@@ -1,7 +1,7 @@
 ########################################################################
 # fgddemImporter - A QGIS plugin
-# Copyright (C) 2012 Akagri Minoru
-# email : akaginch@yahoo.co.jp
+# Copyright (C) 2012 Minoru Akagri
+# email : akaginch at gmail.com
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -10,8 +10,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ########################################################################
-# version beta 2012/10/18
-# not support filepath with multibyte string
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -26,8 +24,22 @@ plugin_classname = "fgddemImporter"
 
 class fgddemImporter:
     def __init__(self, iface):
-        # save reference to the QGIS interface
         self.iface = iface
+        self.plugin_dir = QFileInfo(QgsApplication.qgisUserDbFilePath()).path() + "/python/plugins/fgddemImporter"
+
+        # initialize locale
+        localePath = ""
+        locale = QSettings().value("locale/userLocale").toString()[0:2]
+
+        if QFileInfo(self.plugin_dir).exists():
+            localePath = self.plugin_dir + "/i18n/" + locale + ".qm"
+
+        if QFileInfo(localePath).exists():
+            self.translator = QTranslator()
+            self.translator.load(localePath)
+
+            if qVersion() > '4.3.3':
+                QCoreApplication.installTranslator(self.translator)
 
     def initGui(self):
         # create action that will start plugin
@@ -59,7 +71,6 @@ class fgddemDialog(QDialog):
         self.iface = iface
         self.caption = self.tr("fgddem Importer")
         self.setupUi()
-
         s = QSettings()
 
     def setupUi(self):
@@ -161,25 +172,25 @@ class fgddemDialog(QDialog):
             e.ignore()
 
     def dropEvent(self, e):
-        names = []
+        names = QStringList()
         for u in e.mimeData().urls():
-            names.append(unicode(u.toLocalFile()))
+            names << u.toLocalFile()
         self.add_files(names)
 
     def add_files(self, names):
-        existing = []
+        existing = QStringList()
         for i in range(self.inFiles.count()):
-            existing.append(unicode(self.inFiles.item(i).text()))
+            existing << self.inFiles.item(i).text()
 
-        allow_exts = [".zip", ".xml"]
+        allow_exts = QStringList(["zip", "xml"])
         for name in names:
-            ext = os.path.splitext(name)[1].lower()
-            if not name in existing and ext in allow_exts:
+            ext = QFileInfo(name).suffix()
+            if existing.indexOf(name) == -1 and allow_exts.indexOf(ext.toLower()) != -1:
                 self.inFiles.addItem(name)
-        self.label3.setText(str(self.inFiles.count()) + self.tr(" files"))
+        self.label3.setText(self.tr("%1 files").arg(self.inFiles.count()))
         self.importButton.setEnabled(True)
         if self.outDir.text() == "":
-            self.outDir.setText(os.path.split(names[0])[0])
+            self.outDir.setText(QFileInfo(names[0]).dir().path())
 
     def check2_changed(self, state):
         if state:
@@ -188,23 +199,24 @@ class fgddemDialog(QDialog):
             self.importButton.setText(self.tr("Import"))
 
     def directorydialog(self):
-        file = unicode(QFileDialog.getExistingDirectory(self, self.tr("Select output directory")))
+        file = QFileDialog.getExistingDirectory(self, self.tr("Select output directory"))
         if file != "":
             self.outDir.setText(file)
 
     def filedialog(self):
-        names = map(unicode, QFileDialog.getOpenFileNames(self, self.tr("Select files to import"), QDir.homePath(), "JPGIS_GML files (*.zip *.xml)"))
+        names = QFileDialog.getOpenFileNames(self, self.tr("Select files to import"),
+                                            QDir.homePath(), "JPGIS_GML files (*.zip *.xml)")
         if len(names) > 0:
             self.add_files(names)
 
     def clear_files(self):
         self.inFiles.clear()
-        self.label3.setText(self.tr("%d files") % 0)
+        self.label3.setText(self.tr("%1 files").arg(0))
         self.importButton.setEnabled(False)
 
     def import_fgddem(self):
         pdir = os.path.dirname(__file__)
-        out_dir = unicode(self.outDir.text())
+        out_dir = str(self.outDir.text().toLocal8Bit())
         if out_dir.find(" ") != -1:
             QMessageBox.warning(self, self.caption, self.tr("Error: Output directory cannot include any space characters."))
             return
@@ -213,23 +225,25 @@ class fgddemDialog(QDialog):
         if self.check1.isChecked():
             options += "-replace_nodata_by_zero "
 
-        names = []
+        names8 = []
         for i in range(self.inFiles.count()):
-            names.append(unicode(self.inFiles.item(i).text()))
+            names8.append(str(self.inFiles.item(i).text().toLocal8Bit()))
 
-        cmd = 'python "%s/fgddem.py" %s' % (pdir, options + " ".join(map(quote_string, names)))
+        cmd = 'python "%s/fgddem.py" %s' % (pdir, options + " ".join(map(quote_string, names8)))
 
-        msg = self.tr("Are you sure you want to start converting %d files to GeoTIFF file?") % len(names)
+        msg = self.tr("Are you sure you want to start converting %1 files to GeoTIFF file?").arg(len(names8))
         if QMessageBox.question(self, self.caption, msg, QMessageBox.Ok | QMessageBox.Cancel) != QMessageBox.Ok:
             return
 
         self.importButton.setEnabled(False)
         if self.check2.isChecked():
-            QgsRunProcess.create(cmd, False)
+            QgsRunProcess.create(QString.fromLocal8Bit(cmd), False)
         else:
             os.system(cmd)
-            for i in range(len(names)):
-                names[i] = os.path.join(out_dir, os.path.splitext(os.path.split(names[i])[1])[0] + ".tif")
+            names = QStringList()
+            for name in names8:
+                filetitle = str(QFileInfo(QString.fromLocal8Bit(name)).baseName().toLocal8Bit())
+                names << QString.fromLocal8Bit(os.path.join(out_dir, filetitle + ".tif"))
             self.open_files(names)
 
     def open_files(self, names):
@@ -250,8 +264,7 @@ class fgddemDialog(QDialog):
             rampitems.append(QgsColorRampShader.ColorRampItem(item[0], QColor(item[1], item[2], item[3])))
 
         for name in names:
-            filetitle = os.path.splitext(os.path.split(name)[1])[0]
-            layer = QgsRasterLayer(name, filetitle)
+            layer = QgsRasterLayer(name, QFileInfo(name).baseName())
 
             if hasattr(layer, "rasterShader"):
                 # ver. < 1.9
