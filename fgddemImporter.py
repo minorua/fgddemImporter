@@ -71,17 +71,21 @@ class fgddemDialog(QDialog):
         self.iface = iface
         self.caption = self.tr("fgddem Importer")
         self.setupUi()
-        s = QSettings()
+        self.process = QProcess(self)
+        #self.connect(self.process, SIGNAL("error(QProcess::ProcessError)"), self.processError)
+        self.connect(self.process, SIGNAL("finished(int, QProcess::ExitStatus)"), self.processFinished)
+        self.connect(self.process, SIGNAL("readyRead()"), self.processOutput)
+        self.out_dir = ""
+        self.processingFiles = []
 
     def setupUi(self):
         Dialog = self
         self.setObjectName("Dialog")
-        self.resize(377, 100)
+        self.resize(400, 200)
         self.setSizeGripEnabled(True)
 
         self.gridLayout = QGridLayout(Dialog)
         self.gridLayout.setObjectName("gridLayout")
-
 
         self.label1 = QLabel(Dialog)
         self.label1.setObjectName("label1")
@@ -113,7 +117,6 @@ class fgddemDialog(QDialog):
         self.label3.setObjectName("label3")
         self.gridLayout.addWidget(self.label3, 2, 1, 1, 1, Qt.Alignment(Qt.AlignRight))
 
-
         self.hboxlayout2 = QHBoxLayout()
         self.hboxlayout2.setObjectName("hboxlayout2")
 
@@ -136,11 +139,15 @@ class fgddemDialog(QDialog):
         self.check2.setObjectName("check2")
         self.gridLayout.addWidget(self.check2, 5, 0, 1, 2)
 
+        self.output = QTextBrowser(Dialog)
+        self.output.setObjectName("txtOutput")
+        self.gridLayout.addWidget(self.output, 6, 0, 1, 2)
+
         self.buttonBox1 = QDialogButtonBox(self)
         self.buttonBox1.setOrientation(Qt.Horizontal)
         self.buttonBox1.setStandardButtons(QDialogButtonBox.Ok|QDialogButtonBox.Close)
         self.buttonBox1.setObjectName("buttonBox1")
-        self.gridLayout.addWidget(self.buttonBox1, 6, 0, 1, 2)
+        self.gridLayout.addWidget(self.buttonBox1, 7, 0, 1, 2)
 
         self.setWindowTitle(self.tr("fgddem Importer"))
         self.label1.setText(self.tr("Files to import"))
@@ -220,7 +227,8 @@ class fgddemDialog(QDialog):
         if out_dir.find(" ") != -1:
             QMessageBox.warning(self, self.caption, self.tr("Error: Output directory cannot include any space characters."))
             return
-        options = u"-out_dir %s " % out_dir
+        self.out_dir = out_dir
+        options = u"-out_dir %s " % self.out_dir
 
         if self.check1.isChecked():
             options += "-replace_nodata_by_zero "
@@ -240,12 +248,21 @@ class fgddemDialog(QDialog):
         if self.check2.isChecked():
             QgsRunProcess.create(cmd, False)
         else:
-            os.system(cmd)
-            paths = []
-            for name in names:
-                filetitle = QFileInfo(name).baseName()
-                names.append(os.path.join(out_dir, filetitle + ".tif"))
-            self.open_files(names)
+            self.output.clear()
+            self.processingFiles = names
+            self.process.start(cmd)
+
+    def processOutput(self):
+        codec = QTextCodec.codecForLocale()
+        self.output.append(codec.toUnicode(self.process.readAll()))
+
+    def processFinished(self, exitCode, status):
+        paths = []
+        for filename in self.processingFiles:
+            filetitle = QFileInfo(filename).baseName()
+            paths.append(os.path.join(self.out_dir, filetitle + ".tif"))
+        QMessageBox.information(self, "", " ".join(paths))
+        self.open_files(paths)
 
     def open_files(self, names):
         colormap = [
@@ -274,13 +291,13 @@ class fgddemDialog(QDialog):
                 fcn.setColorRampType(QgsColorRampShader.INTERPOLATED)
                 fcn.setColorRampItemList(rampitems)
                 layer.setDrawingStyle(QgsRasterLayer.SingleBandPseudoColor)
-                QgsMapLayerRegistry.instance().addMapLayer(layer)
             else:
                 # ver. >= 1.9 in developing
-                QgsMapLayerRegistry.instance().addRasterLayer(layer)
                 pass
+            QgsMapLayerRegistry.instance().addMapLayer(layer)
 
     def close(self):
+        self.disconnect(self.process, SIGNAL("finished(int, QProcess::ExitStatus)"), self.processFinished)
         QDialog.close(self)
 
 def quote_string(s):

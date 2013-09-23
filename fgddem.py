@@ -36,6 +36,8 @@ try:
 except:
     progress = gdal.TermProgress
 
+flush = sys.stdout.flush
+
 verbose = 0
 quiet = 0
 debug_mode = 0
@@ -77,6 +79,7 @@ def convert_jpgis_gml(src_file,dest_file,driver,create_options = [],replace_noda
         print 'l1: %d l2: %d' % (l1,l2)
         print numLines_tupleList
         print doc_hf
+        flush()
 
     # Minidom doesn't support Shift_JIS encoding (2012-03-08)
     xml = minidom.parseString(doc_hf.encode('UTF-8').replace('Shift_JIS','UTF-8'))
@@ -142,6 +145,7 @@ def convert_jpgis_gml(src_file,dest_file,driver,create_options = [],replace_noda
         print 'cell size : %f, %f' % (psize_x,psize_y)
         print 'size : %d, %d' % (xsize,ysize)
         print 'start point : %d, %d\n' % (startX,startY)
+        flush()
 
 def unzip(src_file, dest=None):
     if os.path.isfile(src_file):
@@ -153,6 +157,7 @@ def unzip(src_file, dest=None):
 
         if verbose:
             print 'unzipped : %s' % dest
+            flush()
 
 def Usage():
     print '=== Usage ==='
@@ -211,6 +216,7 @@ def main(argv=None):
             f = glob.glob(arg)
             if len(f) == 0:
                 print 'File not found: "%s"' % arg
+                flush()
             filenames += f
         i = i + 1
 
@@ -232,6 +238,7 @@ def main(argv=None):
         os.mkdir(out_dir)
         if verbose:
             print '"%s" directory has been created.' % out_dir
+            flush()
 
     if replace_nodata_by_zero == 0:
         gdal_merge_options += ' -a_nodata -9999'
@@ -246,6 +253,7 @@ def main(argv=None):
     for src_file in filenames:
         if quiet == 0 and len(filenames) > 1:
             print '(%d/%d): Processing %s' % (fi_processed+1, len(filenames), src_file)
+            flush()
 
         if out_dir == '':
             src_root, ext = os.path.splitext(src_file)
@@ -260,10 +268,12 @@ def main(argv=None):
         if ext == '.zip':
             if quiet == 0:
                 print 'extracting %s' % src_file
+                flush()
             unzip(src_file,dst_root)
 
             if quiet == 0:
                 print 'translating %s' % dst_root
+                flush()
 
             if quiet == 0 and verbose == 0:
                 progress(0.0)
@@ -294,12 +304,15 @@ def main(argv=None):
 
             if quiet == 0:
                 print 'merging files'
+                flush()
             if verbose:
                 print 'executing %s' % merge_command
+                flush()
             os.system(merge_command)
 
             if quiet == 0:
                 print 'removing temporary files\n'
+                flush()
             shutil.rmtree(dst_root)
 
         elif ext == '.xml' and src_file.find('meta') == -1:
@@ -307,6 +320,7 @@ def main(argv=None):
 
         else:
             print 'ERROR: Not supported file. Conversion passed.' #TODO: is stderr better?
+            flush()
 
         fi_processed += 1
 
