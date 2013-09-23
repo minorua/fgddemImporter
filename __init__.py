@@ -24,7 +24,7 @@ def category():
   return "Raster"
 
 def version():
-    return "Version 0.0.1"
+    return "Version 0.0.2"
 
 def icon():
     return "icon.png"
