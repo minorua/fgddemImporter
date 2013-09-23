@@ -298,6 +298,7 @@ class fgddemDialog(QDialog):
 
     def close(self):
         self.disconnect(self.process, SIGNAL("finished(int, QProcess::ExitStatus)"), self.processFinished)
+        self.disconnect(self.process, SIGNAL("readyRead()"), self.processOutput)
         QDialog.close(self)
 
 def quote_string(s):
