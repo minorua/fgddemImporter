@@ -1,7 +1,7 @@
 ; the next section is mandatory
 [general]
 name=fgddemImporter
-qgisMinimumVersion=1.0
+qgisMinimumVersion=2.0.0
 description=Import fgddem xml/zip files.
 category=Raster
 version=version 0.0.1

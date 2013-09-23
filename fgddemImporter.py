@@ -29,7 +29,7 @@ class fgddemImporter:
 
         # initialize locale
         localePath = ""
-        locale = QSettings().value("locale/userLocale").toString()[0:2]
+        locale = QSettings().value("locale/userLocale")[0:2]
 
         if QFileInfo(self.plugin_dir).exists():
             localePath = self.plugin_dir + "/i18n/" + locale + ".qm"
@@ -172,22 +172,22 @@ class fgddemDialog(QDialog):
             e.ignore()
 
     def dropEvent(self, e):
-        names = QStringList()
+        names = []
         for u in e.mimeData().urls():
-            names << u.toLocalFile()
+            names.append(u.toLocalFile())
         self.add_files(names)
 
     def add_files(self, names):
-        existing = QStringList()
+        existing = []
         for i in range(self.inFiles.count()):
-            existing << self.inFiles.item(i).text()
+            existing.append(self.inFiles.item(i).text())
 
-        allow_exts = QStringList(["zip", "xml"])
+        allow_exts = ["zip", "xml"]
         for name in names:
             ext = QFileInfo(name).suffix()
-            if existing.indexOf(name) == -1 and allow_exts.indexOf(ext.toLower()) != -1:
+            if not name in existing and ext.lower() in allow_exts:
                 self.inFiles.addItem(name)
-        self.label3.setText(self.tr("%1 files").arg(self.inFiles.count()))
+        self.label3.setText(self.tr("{0} files").format(self.inFiles.count()))
         self.importButton.setEnabled(True)
         if self.outDir.text() == "":
             self.outDir.setText(QFileInfo(names[0]).dir().path())
@@ -211,39 +211,40 @@ class fgddemDialog(QDialog):
 
     def clear_files(self):
         self.inFiles.clear()
-        self.label3.setText(self.tr("%1 files").arg(0))
+        self.label3.setText(self.tr("{0} files").format(0))
         self.importButton.setEnabled(False)
 
     def import_fgddem(self):
         pdir = os.path.dirname(__file__)
-        out_dir = str(self.outDir.text().toLocal8Bit())
+        out_dir = self.outDir.text()
         if out_dir.find(" ") != -1:
             QMessageBox.warning(self, self.caption, self.tr("Error: Output directory cannot include any space characters."))
             return
-        options = "-out_dir %s " % out_dir
+        options = u"-out_dir %s " % out_dir
 
         if self.check1.isChecked():
             options += "-replace_nodata_by_zero "
 
-        names8 = []
+        names = []
         for i in range(self.inFiles.count()):
-            names8.append(str(self.inFiles.item(i).text().toLocal8Bit()))
+            names.append(self.inFiles.item(i).text())
 
-        cmd = 'python "%s/fgddem.py" %s' % (pdir, options + " ".join(map(quote_string, names8)))
+        cmd = u'python "%s/fgddem.py" %s' % (pdir, options + " ".join(map(quote_string, names)))
+        #QMessageBox.information(self, "", cmd)
 
-        msg = self.tr("Are you sure you want to start converting %1 files to GeoTIFF file?").arg(len(names8))
+        msg = self.tr("Are you sure you want to start converting {0} files to GeoTIFF file?").format(len(names))
         if QMessageBox.question(self, self.caption, msg, QMessageBox.Ok | QMessageBox.Cancel) != QMessageBox.Ok:
             return
 
         self.importButton.setEnabled(False)
         if self.check2.isChecked():
-            QgsRunProcess.create(QString.fromLocal8Bit(cmd), False)
+            QgsRunProcess.create(cmd, False)
         else:
             os.system(cmd)
-            names = QStringList()
-            for name in names8:
-                filetitle = str(QFileInfo(QString.fromLocal8Bit(name)).baseName().toLocal8Bit())
-                names << QString.fromLocal8Bit(os.path.join(out_dir, filetitle + ".tif"))
+            paths = []
+            for name in names:
+                filetitle = QFileInfo(name).baseName()
+                names.append(os.path.join(out_dir, filetitle + ".tif"))
             self.open_files(names)
 
     def open_files(self, names):
@@ -267,17 +268,17 @@ class fgddemDialog(QDialog):
             layer = QgsRasterLayer(name, QFileInfo(name).baseName())
 
             if hasattr(layer, "rasterShader"):
-                # ver. < 1.9
+                # ver. < 2.0
                 layer.setColorShadingAlgorithm(QgsRasterLayer.ColorRampShader)
                 fcn = layer.rasterShader().rasterShaderFunction()
                 fcn.setColorRampType(QgsColorRampShader.INTERPOLATED)
                 fcn.setColorRampItemList(rampitems)
                 layer.setDrawingStyle(QgsRasterLayer.SingleBandPseudoColor)
+                QgsMapLayerRegistry.instance().addMapLayer(layer)
             else:
                 # ver. >= 1.9 in developing
+                QgsMapLayerRegistry.instance().addRasterLayer(layer)
                 pass
-
-            QgsMapLayerRegistry.instance().addMapLayer(layer)
 
     def close(self):
         QDialog.close(self)
