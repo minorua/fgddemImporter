@@ -222,6 +222,8 @@ class fgddemDialog(QDialog):
         self.importButton.setEnabled(False)
 
     def import_fgddem(self):
+        self.output.clear()
+
         pdir = os.path.dirname(__file__)
         out_dir = self.outDir.text()
         if out_dir.find(" ") != -1:
@@ -248,7 +250,6 @@ class fgddemDialog(QDialog):
         if self.check2.isChecked():
             QgsRunProcess.create(cmd, False)
         else:
-            self.output.clear()
             self.processingFiles = names
             self.process.start(cmd)
 
@@ -261,7 +262,6 @@ class fgddemDialog(QDialog):
         for filename in self.processingFiles:
             filetitle = QFileInfo(filename).baseName()
             paths.append(os.path.join(self.out_dir, filetitle + ".tif"))
-        QMessageBox.information(self, "", " ".join(paths))
         self.open_files(paths)
 
     def open_files(self, names):
