@@ -164,7 +164,7 @@ def translate_zip(src_file, dst_file, driver, create_options = [], replace_nodat
       demlist.append(tif_name)
     if quiet == 0 and verbose == 0:
       progress((i + 1.) / len(namelist))
-
+  zf.close()
   if len(demlist) == 0:
     return "Zip file includes no xml file: " + src_file
 
@@ -204,7 +204,6 @@ def translate_zip(src_file, dst_file, driver, create_options = [], replace_nodat
     print "execute %s" % merge_command
   os.system(merge_command)
 
-  zf.close()
   # remove temporary directory
   shutil.rmtree(temp_dir)
   if quiet == 0:
