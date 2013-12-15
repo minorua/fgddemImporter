@@ -1,8 +1,15 @@
-; the next section is mandatory
+# mandatory metadata
 [general]
 name=fgddemImporter
 qgisMinimumVersion=2.0.0
-description=Import fgddem xml/zip files.
-category=Raster
-version=version 0.0.2
-; end of mandatory metadata
+description=Import JPGIS (GML) DEM files.
+version=0.1
+author=Minoru Akagi
+email=akaginch@gmail.com
+# end of mandatory metadata
+
+tags=convert,JPGIS(GML),FGDDEM,GSI
+
+homepage=https://github.com/minorua/fgddemImporter
+tracker=https://github.com/minorua/fgddemImporter
+repository=https://github.com/minorua/fgddemImporter
