@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-script_version = "0.3"
+script_version = "0.4"
 
 import sys, os
 import glob
@@ -24,7 +24,7 @@ import re
 import zipfile
 import shutil
 from xml.dom import minidom
-import numpy
+import struct
 import datetime
 
 try:
@@ -100,12 +100,11 @@ def translate_jpgis_gml(src_document, dest_file, driver, create_options = [], re
   dst_ds.SetGeoTransform(geotransform)
 
   rband = dst_ds.GetRasterBand(1)
-  narray = numpy.empty((ysize, xsize), numpy.float32)
   if replace_nodata_by_zero:
     nodata_value = 0.
   else:
     nodata_value = -9999.
-  narray.fill(nodata_value)
+  data = [struct.pack("f", nodata_value)] * xsize * ysize
 
   # read tuple list
   num_tuples = l2 - l1 + 1
@@ -115,15 +114,15 @@ def translate_jpgis_gml(src_document, dest_file, driver, create_options = [], re
       if i < num_tuples:
         vals = lines[i + l1].split(",")
         if len(vals) == 2 and vals[1].find("-99") == -1:
-          narray[y][x] = float(vals[1])
+          data[x + y * xsize] = struct.pack("f", float(vals[1]))
         i += 1
       else:
         break
     if i == num_tuples: break
     sx = 0
 
-  # write array
-  rband.WriteArray(narray, 0, 0)
+  # write values
+  rband.WriteRaster(0, 0, xsize, ysize, "".join(data))
   if replace_nodata_by_zero == 0:
     rband.SetNoDataValue(nodata_value)
   dst_ds = None
