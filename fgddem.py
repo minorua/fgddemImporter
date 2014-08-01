@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# fgddem.py
-# translates Digital Elevation Model of Fundamental Geospatial Data provided by GSI into GeoTIFF
-# Copyright (c) 2012, Minoru Akagi
+# name      : fgddem.py
+# purpose   : translates Digital Elevation Model of Fundamental Geospatial Data provided by GSI into GeoTIFF
+# copyright : (c) 2012, Minoru Akagi
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,16 +16,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-script_version = "0.4"
+script_version = "0.5"
 
 import sys, os
+import datetime
 import glob
+import numpy
 import re
-import zipfile
 import shutil
 from xml.dom import minidom
-import struct
-import datetime
+import zipfile
 
 try:
   from osgeo import gdal
@@ -36,6 +36,7 @@ try:
   progress = gdal.TermProgress_nocb
 except:
   progress = gdal.TermProgress
+
 flush = sys.stdout.flush
 
 verbose = 0
@@ -43,10 +44,8 @@ quiet = 0
 debug_mode = 0
 
 def translate_jpgis_gml(src_document, dest_file, driver, create_options = [], replace_nodata_by_zero = 0):
-  """ 
-  translates JPGIS (GML) DEM into GeoTIFF
-  supports only JPGIS (GML). JPGIS is not supported.
-  """
+  """ translates JPGIS (GML) DEM into GeoTIFF. JPGIS is not supported. """
+
   # read lines and get row range of tuple list
   lines = src_document.split("\n")    # \r character at line ending is no problem: float("0.01\r") = 0.01
   num_lines = len(lines)
@@ -104,28 +103,33 @@ def translate_jpgis_gml(src_document, dest_file, driver, create_options = [], re
     nodata_value = 0.
   else:
     nodata_value = -9999.
-  data = [struct.pack("f", nodata_value)] * xsize * ysize
+    rband.SetNoDataValue(nodata_value)
+
+  # create an array initialized with nodata value
+  narray = numpy.empty((ysize, xsize), numpy.float32)
+  narray.fill(nodata_value)
 
   # read tuple list
   num_tuples = l2 - l1 + 1
-  i = 0; sx = startX
+  i = 0
+  sx = startX
   for y in range(startY, ysize):
     for x in range(sx, xsize):
       if i < num_tuples:
         vals = lines[i + l1].split(",")
         if len(vals) == 2 and vals[1].find("-99") == -1:
-          data[x + y * xsize] = struct.pack("f", float(vals[1]))
+          narray[y][x] = float(vals[1])
         i += 1
       else:
         break
     if i == num_tuples: break
     sx = 0
 
-  # write values
-  rband.WriteRaster(0, 0, xsize, ysize, "".join(data))
-  if replace_nodata_by_zero == 0:
-    rband.SetNoDataValue(nodata_value)
-  dst_ds = None
+  # write array
+  rband.WriteRaster(0, 0, xsize, ysize, narray.tostring())
+
+  # make sure that all data have been written
+  dst_ds.FlushCache()
 
   if verbose:
     print "file: %s" % dest_file
@@ -145,7 +149,7 @@ def translate_zip(src_file, dst_file, driver, create_options = [], replace_nodat
 
   # create temporary directory
   temp_dir = os.path.splitext(dst_file)[0] + "_temp" + datetime.datetime.today().strftime("%Y%m%d%H%M%S")
-  os.mkdir(temp_dir)
+  os.makedirs(temp_dir)
 
   # open zip file and translate xml files
   dst_root = os.path.splitext(dst_file)[0]
@@ -153,7 +157,7 @@ def translate_zip(src_file, dst_file, driver, create_options = [], replace_nodat
   namelist = zf.namelist()
   demlist = []
 
-  if quiet == 0 and verbose == 0:
+  if not quiet and not verbose:
     progress(0.0)
   for i, name in enumerate(namelist):
     if name[-4:].lower() == ".xml" and not "meta" in name:
@@ -161,7 +165,7 @@ def translate_zip(src_file, dst_file, driver, create_options = [], replace_nodat
       with zf.open(name) as f:
         translate_jpgis_gml(f.read(), tif_name, driver, [], replace_nodata_by_zero)
       demlist.append(tif_name)
-    if quiet == 0 and verbose == 0:
+    if not quiet and not verbose:
       progress((i + 1.) / len(namelist))
   zf.close()
   if len(demlist) == 0:
@@ -181,9 +185,9 @@ def translate_zip(src_file, dst_file, driver, create_options = [], replace_nodat
     gdal_merge_ext = ".py"
   if quiet:
     gdal_merge_options += " -q"
-  if verbose == 0:
+  if not verbose:
     gdalwarp_options += " -q"
-  if replace_nodata_by_zero == 0:
+  if not replace_nodata_by_zero:
     gdal_merge_options += " -a_nodata -9999"
     gdalwarp_options += " -dstnodata -9999"
   gdal_version = int(gdal.VersionInfo())
@@ -196,7 +200,7 @@ def translate_zip(src_file, dst_file, driver, create_options = [], replace_nodat
     merge_command = "gdalwarp%s %s %s" % (gdalwarp_options, os.path.join(temp_dir, "*.tif"), dst_file)
 
   # do merge
-  if quiet == 0:
+  if not quiet:
     print "merging"
     flush()
   if verbose:
@@ -205,7 +209,7 @@ def translate_zip(src_file, dst_file, driver, create_options = [], replace_nodat
 
   # remove temporary directory
   shutil.rmtree(temp_dir)
-  if quiet == 0:
+  if not quiet:
     print "temporary files removed\n"
     flush()
   return 0
@@ -275,32 +279,32 @@ def main(argv=None):
     return "No input files selected"
 
   # create output directory
-  if out_dir != "" and os.path.exists(out_dir) == False:
-    os.mkdir(out_dir)
+  if out_dir and os.path.exists(out_dir) == False:
+    os.makedirs(out_dir)
     if verbose:
       print "Directory has been created: %s" % out_dir
 
   # get gdal driver
-  gdal.AllRegister()
   driver = gdal.GetDriverByName(format)
   if driver is None:
     return "Driver %s not found" % format
 
   err_count = 0
   for i, src_file in enumerate(filenames):
-    if quiet == 0:
+    if not quiet:
       if len(filenames) > 1:
         print "(%d/%d): translating %s" % (i+1, len(filenames), src_file)
       else:
         print "translating " + src_file
       flush()
 
-    if out_dir == "":
-      src_root, ext = os.path.splitext(src_file)
-      dst_root = src_root
-    else:
+    if out_dir:
       filetitle, ext = os.path.splitext(os.path.basename(src_file))
       dst_root = os.path.join(out_dir, filetitle)
+    else:
+      src_root, ext = os.path.splitext(src_file)
+      dst_root = src_root
+
     dst_file = dst_root + ".tif"
     ext = ext.lower()
 
@@ -318,7 +322,7 @@ def main(argv=None):
       sys.stderr.write(err + "\n")
       err_count += 1
 
-  if quiet == 0 and err_count == 0:
+  if not quiet and err_count == 0:
     print "completed"
   return 0
 
