@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-script_version = "0.5"
+script_version = "0.6"
 
 import sys, os
 import datetime
@@ -171,41 +171,44 @@ def translate_zip(src_file, dst_file, driver, create_options = [], replace_nodat
   if len(demlist) == 0:
     return "Zip file includes no xml file: " + src_file
 
-  # write demlist into a file
-  demlist_filename = os.path.join(temp_dir, 'demlist.txt')
-  with open(demlist_filename, 'w') as f:
-    f.write("\n".join(demlist))
-    f.write("\n")
-
-  # create merge command
-  gdal_merge_options = ""
-  gdalwarp_options = ""
-  gdal_merge_ext = ""
-  if os.name != "nt":   # nt: windows
-    gdal_merge_ext = ".py"
-  if quiet:
-    gdal_merge_options += " -q"
-  if not verbose:
-    gdalwarp_options += " -q"
-  if not replace_nodata_by_zero:
-    gdal_merge_options += " -a_nodata -9999"
-    gdalwarp_options += " -dstnodata -9999"
-  gdal_version = int(gdal.VersionInfo())
-  re_non_ascii = re.compile(r"[^\x20-\x7E]")
-  if gdal_version >= 1900 and re_non_ascii.search(src_file + dst_file) == None:
-    merge_command = "gdal_merge%s%s -o %s --optfile %s" % (gdal_merge_ext, gdal_merge_options, dst_file, demlist_filename)
-    # TODO: testing in Linux
-    # Wildcards cannot be used for arguments now. See http://trac.osgeo.org/gdal/ticket/4542 (2012/04/08)
+  if len(demlist) == 1:
+    os.rename(demlist[0], dst_file)
   else:
-    merge_command = "gdalwarp%s %s %s" % (gdalwarp_options, os.path.join(temp_dir, "*.tif"), dst_file)
+    # create merge command
+    gdal_merge_options = ""
+    gdalwarp_options = ""
+    gdal_merge_ext = ""
+    if os.name != "nt":   # nt: windows
+      gdal_merge_ext = ".py"
+    if quiet:
+      gdal_merge_options += " -q"
+    if not verbose:
+      gdalwarp_options += " -q"
+    if not replace_nodata_by_zero:
+      gdal_merge_options += " -a_nodata -9999"
+      gdalwarp_options += " -dstnodata -9999"
+    gdal_version = int(gdal.VersionInfo())
+    re_non_ascii = re.compile(r"[^\x20-\x7E]")
+    if gdal_version >= 1900 and re_non_ascii.search(src_file + dst_file) == None:
+      # write demlist into a file
+      demlist_filename = os.path.join(temp_dir, 'demlist.txt')
+      with open(demlist_filename, 'w') as f:
+        f.write("\n".join(demlist))
+        f.write("\n")
 
-  # do merge
-  if not quiet:
-    print "merging"
-    flush()
-  if verbose:
-    print "execute %s" % merge_command
-  os.system(merge_command)
+      merge_command = "gdal_merge%s%s -o %s --optfile %s" % (gdal_merge_ext, gdal_merge_options, dst_file, demlist_filename)
+      # TODO: testing in Linux
+      # Wildcards cannot be used for arguments now. See http://trac.osgeo.org/gdal/ticket/4542 (2012/04/08)
+    else:
+      merge_command = "gdalwarp%s %s %s" % (gdalwarp_options, os.path.join(temp_dir, "*.tif"), dst_file)
+
+    # do merge
+    if not quiet:
+      print "merging"
+      flush()
+    if verbose:
+      print "execute %s" % merge_command
+    os.system(merge_command)
 
   # remove temporary directory
   shutil.rmtree(temp_dir)
@@ -257,7 +260,8 @@ def main(argv=None):
     elif arg == "-debug":
       debug_mode = 1
     elif arg == "-help" or arg == "--help":
-      return Usage()
+      Usage()
+      return 0
     elif arg == "-version":
       print "fgddem.py Version %s" % script_version
       return 0
