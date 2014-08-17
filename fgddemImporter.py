@@ -48,14 +48,12 @@ class fgddemImporter:
         self.action.setStatusTip(self.tr("Import fgddem xml/zip files"))
         QObject.connect(self.action, SIGNAL("triggered()"), self.run)
 
-        # add toolbar button and menu item
-        self.iface.addToolBarIcon(self.action)
+        # add menu item
         self.iface.addPluginToMenu(self.tr("fgddem Importer"), self.action)
 
     def unload(self):
-        # remove the plugin menu item and icon
+        # remove the plugin menu item
         self.iface.removePluginMenu(self.tr("fgddem Importer"), self.action)
-        self.iface.removeToolBarIcon(self.action)
 
     def run(self):
         # create and show a configuration dialog or something similar
