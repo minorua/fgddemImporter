@@ -152,7 +152,6 @@ def translate_zip(src_file, dst_file, driver, create_options = [], replace_nodat
   os.makedirs(temp_dir)
 
   # open zip file and translate xml files
-  dst_root = os.path.splitext(dst_file)[0]
   zf = zipfile.ZipFile(src_file, mode="r")
   namelist = zf.namelist()
   demlist = []
@@ -217,6 +216,7 @@ def translate_zip(src_file, dst_file, driver, create_options = [], replace_nodat
     flush()
   return 0
 
+
 def unzip(src_file, dest=None):
   if os.path.isfile(src_file):
     if dest is None:
@@ -227,11 +227,13 @@ def unzip(src_file, dest=None):
     if verbose:
       print "unzipped : %s" % dest
 
+
 def Usage():
   print "=== Usage ==="
   print "python fgddem.py [-replace_nodata_by_zero] [-out_dir output_directory] [-q] [-v] src_files*\n"
   print "src_files: The source file name(s). JPGIS(GML) DEM zip/xml files."
   return 0
+
 
 def main(argv=None):
   global verbose, quiet, debug_mode
@@ -330,18 +332,23 @@ def main(argv=None):
     print "completed"
   return 0
 
-def float2(str):
+
+def float2(val, min_repeat=6):
+  """Increase number of decimal places of a repeating decimal.
+     e.g. 34.111111 -> 34.1111111111111111"""
+  repeat = 0
   lc = ""
-  for i in range(len(str)):
-    c = str[i]
+  for i in range(len(val)):
+    c = val[i]
     if c == lc:
-      renzoku += 1
-      if renzoku == 6:
-        return float(str[:i+1] + c * 10)
+      repeat += 1
+      if repeat == min_repeat:
+        return float(val[:i+1] + c * 10)
     else:
       lc = c
-      renzoku = 1
-  return float(str)
+      repeat = 1
+  return float(val)
+
 
 if __name__ == "__main__":
   err = main(sys.argv)
