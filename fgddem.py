@@ -43,33 +43,19 @@ verbose = 0
 quiet = 0
 debug_mode = 0
 
-def translate_jpgis_gml(src_document, dest_file, driver, create_options = [], replace_nodata_by_zero = 0):
-  """ translates JPGIS (GML) DEM into GeoTIFF. JPGIS is not supported. """
 
-  # read lines and get row range of tuple list
-  lines = src_document.split("\n")    # \r character at line ending is no problem: float("0.01\r") = 0.01
-  num_lines = len(lines)
-  l1 = None
-  l2 = None
-  for i in range(num_lines):
-    if lines[i].find("<gml:tupleList>") != -1:
-      l1 = i + 1    # top of inner tupleList
-      break
-  for i in range(num_lines - 1, -1, -1):
-    if lines[i].find("</gml:tupleList>") != -1:
-      l2 = i - 1    # bottom of inner tupleList
-      break
-  if l1 is None or l2 is None:
-    return "Source file format isn't JPGIS (GML)"
+def translate_jpgis_gml(text, dest_file, driver, create_options=None, replace_nodata_by_zero=False):
+  """translates JPGIS (GML) DEM into a GDAL supported format (write access)."""
 
-  hf = "\n".join(lines[:l1] + lines[l2 + 1:])
-  if debug_mode:
-    print "l1: %d l2: %d" % (l1, l2)
-    print hf
+  create_options = create_options or []
+
+  # split document into 3 parts - header, body (tuple list) and footer
+  header, body = text.split("<gml:tupleList>", 1)
+  body, footer = body.rsplit("</gml:tupleList>", 1)
 
   # parse xml
   # minidom doesn't support Shift_JIS encoding (2012-03-08)
-  doc = minidom.parseString(hf.decode("Shift_JIS").encode("UTF-8").replace("Shift_JIS", "UTF-8"))
+  doc = minidom.parseString((header + footer).decode("Shift_JIS").encode("UTF-8").replace("Shift_JIS", "UTF-8"))
   lowerCorner = doc.getElementsByTagName("gml:lowerCorner")[0].childNodes[0].data.split(" ")
   upperCorner = doc.getElementsByTagName("gml:upperCorner")[0].childNodes[0].data.split(" ")
   lry = float2(lowerCorner[0])
@@ -110,19 +96,21 @@ def translate_jpgis_gml(src_document, dest_file, driver, create_options = [], re
   narray.fill(nodata_value)
 
   # read tuple list
-  num_tuples = l2 - l1 + 1
+  tuples = body.strip().split("\n")    # no problem with \r character at line end: float("0.01\r") = 0.01
+  num_tuples = len(tuples)
   i = 0
   sx = startX
   for y in range(startY, ysize):
     for x in range(sx, xsize):
       if i < num_tuples:
-        vals = lines[i + l1].split(",")
+        vals = tuples[i].split(",")
         if len(vals) == 2 and vals[1].find("-99") == -1:
           narray[y][x] = float(vals[1])
         i += 1
       else:
         break
-    if i == num_tuples: break
+    if i == num_tuples:
+      break
     sx = 0
 
   # write array
@@ -143,7 +131,8 @@ def translate_jpgis_gml(src_document, dest_file, driver, create_options = [], re
     print "start point : %d, %d\n" % (startX, startY)
   return 0
 
-def translate_zip(src_file, dst_file, driver, create_options = [], replace_nodata_by_zero = 0):
+
+def translate_zip(src_file, dst_file, driver, create_options=None, replace_nodata_by_zero=False):
   if not os.path.isfile(src_file):
     return "Source is not a file: " + src_file
 
@@ -158,11 +147,12 @@ def translate_zip(src_file, dst_file, driver, create_options = [], replace_nodat
 
   if not quiet and not verbose:
     progress(0.0)
+
   for i, name in enumerate(namelist):
     if name[-4:].lower() == ".xml" and not "meta" in name:
       tif_name = os.path.join(temp_dir, os.path.basename(name) + ".tif")
       with zf.open(name) as f:
-        translate_jpgis_gml(f.read(), tif_name, driver, [], replace_nodata_by_zero)
+        translate_jpgis_gml(f.read(), tif_name, driver, create_options, replace_nodata_by_zero)
       demlist.append(tif_name)
     if not quiet and not verbose:
       progress((i + 1.) / len(namelist))
@@ -241,7 +231,7 @@ def main(argv=None):
   format = "GTiff"
   filenames = []
   out_dir = ""
-  replace_nodata_by_zero = 0
+  replace_nodata_by_zero = False
 
   gdal.SetConfigOption("GDAL_FILENAME_IS_UTF8", "NO")
   os.putenv("GDAL_FILENAME_IS_UTF8", "NO")  # for merging process
@@ -251,7 +241,7 @@ def main(argv=None):
   while i < len(argv):
     arg = argv[i]
     if arg == "-replace_nodata_by_zero":
-      replace_nodata_by_zero = 1
+      replace_nodata_by_zero = True
     elif arg == "-out_dir":
       i += 1
       out_dir = argv[i]
