@@ -194,11 +194,16 @@ def translate_zip(src_file, dst_file, driver, create_options=None, replace_nodat
         f.write("\n".join(demlist))
         f.write("\n")
 
-      merge_command = "gdal_merge%s%s -o %s --optfile %s" % (gdal_merge_ext, gdal_merge_options, dst_file, demlist_filename)
+      merge_command = 'gdal_merge%s%s -o "%s" --optfile "%s"' % (gdal_merge_ext,
+                                                               gdal_merge_options,
+                                                               dst_file,
+                                                               demlist_filename)
       # TODO: testing in Linux
       # Wildcards cannot be used for arguments now. See http://trac.osgeo.org/gdal/ticket/4542 (2012/04/08)
     else:
-      merge_command = "gdalwarp%s %s %s" % (gdalwarp_options, os.path.join(temp_dir, "*.tif"), dst_file)
+      merge_command = 'gdalwarp%s "%s" "%s"' % (gdalwarp_options,
+                                                os.path.join(temp_dir, "*.tif"),
+                                                dst_file)
 
     # do merge
     if not quiet:
