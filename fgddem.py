@@ -223,7 +223,7 @@ def unzip(src_file, dest=None):
 
 def Usage():
   print "=== Usage ==="
-  print "python fgddem.py [-replace_nodata_by_zero] [-out_dir output_directory] [-q] [-v] src_files*\n"
+  print "python fgddem.py [-replace_nodata_by_zero] [-f format] [-out_dir output_directory] [-q] [-v] src_files*\n"
   print "src_files: The source file name(s). JPGIS(GML) DEM zip/xml files."
   return 0
 
@@ -245,6 +245,9 @@ def main(argv=None):
     arg = argv[i]
     if arg == "-replace_nodata_by_zero":
       replace_nodata_by_zero = True
+    elif arg == "-f":
+      i += 1
+      format = argv[i]
     elif arg == "-out_dir":
       i += 1
       out_dir = argv[i]
