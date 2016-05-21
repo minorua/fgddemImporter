@@ -54,8 +54,11 @@ def translate_jpgis_gml(text, dest_file, driver, create_options=None, replace_no
   body, footer = body.rsplit("</gml:tupleList>", 1)
 
   # parse xml
-  # minidom doesn't support Shift_JIS encoding (2012-03-08)
-  doc = minidom.parseString((header + footer).decode("Shift_JIS").encode("UTF-8").replace("Shift_JIS", "UTF-8"))
+  hf = header + footer
+  if "Shift_JIS" in header.split("\n", 1)[0]:
+    # minidom doesn't support Shift_JIS encoding (2012-03-08)
+    hf = hf.decode("Shift_JIS").encode("UTF-8").replace("Shift_JIS", "UTF-8")
+  doc = minidom.parseString(hf)
   lowerCorner = doc.getElementsByTagName("gml:lowerCorner")[0].childNodes[0].data.split(" ")
   upperCorner = doc.getElementsByTagName("gml:upperCorner")[0].childNodes[0].data.split(" ")
   lry = float2(lowerCorner[0])
