@@ -3,16 +3,15 @@
 name=fgddemImporter
 qgisMinimumVersion=2.0.0
 description=Import JPGIS (GML) DEM files.
-version=0.14
+version=0.15
 author=Minoru Akagi
 email=akaginch@gmail.com
 # end of mandatory metadata
 
 changelog=
-    - update fgddem.py
-    - remove icon from toolbar
+    - update fgddem.py (UTF-8 encoded file support)
 
-tags=JPGIS(GML),FGDDEM,GSI
+tags=JPGIS(GML),FGD,DEM,GSI
 
 homepage=https://github.com/minorua/fgddemImporter
 tracker=https://github.com/minorua/fgddemImporter
